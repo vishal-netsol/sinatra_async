@@ -1,0 +1,18 @@
+# defaults: &defaults
+#   host: localhost
+
+# development:
+#   <<: *defaults
+#   database: sample_dev
+
+# test:
+#   <<: *defaults
+#   database: sample_test
+
+
+development:
+      sessions:
+        default:
+          database: sample_dev
+          hosts:
+            - localhost:27017
