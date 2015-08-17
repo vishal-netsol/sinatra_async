@@ -5,6 +5,8 @@ require 'yajl'
 require 'byebug'
 require 'eventmachine'
 require './models/task'
+require 'fiber'
+require 'em-synchrony'
 
 configure do
   Mongoid.load!("config/mongoid.yml")
@@ -14,10 +16,78 @@ before do
   content_type :json
 end
 
+
 get '/tasks' do
   begin
-    #tasks = Array.new(Task.all).to_json
-    tasks = Task.where( :$where => "sleep(5) || true" ).to_a.to_json
+    tasks = Array.new(Task.all).to_json
+  rescue => e
+      error 400, e.message.to_json
+    end
+end
+
+get '/sync_tasks' do
+  begin
+   
+      (1..5).each do |n|
+        tasks = Task.where(:$where => "sleep(1000) || true" ).to_json
+        puts "#{n}-->>>>>>>>>>>>>============================> first_task"
+      end
+        
+
+      Fiber.new{
+        puts "inside fiber"
+      }.resume
+
+
+      
+      tasks = Task.where(:$where => "sleep(5) || true" ).to_json
+      puts " ------------------------==========================> second_task"
+        
+
+      
+      (1..10).each do |n|
+        tasks = Task.where(:$where => "sleep(1) || true" ).to_json
+        puts " #{n}---------------------------------------> Third_task"
+      end
+       
+
+    
+  rescue => e
+      error 400, e.message.to_json
+    end
+end
+
+get '/async_tasks' do
+  begin
+    tasks = []
+    EM.synchrony do
+
+      Fiber.new{
+        EM.system('ls') do
+          (1..5).each do |n|
+            tasks = Task.where(:$where => "sleep(1000) || true" ).to_json
+            puts "#{n}-->>>>>>>>>>>>>============================> first_task"
+          end
+        end
+      }.resume
+
+      Fiber.new{
+        EM.system('ls') do 
+          tasks = Task.where(:$where => "sleep(5) || true" ).to_json
+          puts " ------------------------==========================> second_task"
+        end
+      }.resume
+
+      Fiber.new{
+        EM.system('ls') do
+          (1..10).each do |n|
+            tasks = Task.where(:$where => "sleep(1) || true" ).to_json
+            puts " #{n}---------------------------------------> Third_task"
+          end
+        end
+      }.resume
+
+    end
   rescue => e
       error 400, e.message.to_json
     end
@@ -38,8 +108,8 @@ post '/tasks' do
 end
 
 # Get an individual task
-get "/task/:id" do
-task = Task.find(params[:id])
+get "/tasks/:id" do
+  task = Task.find(params[:id])
   if task
     task.to_json 
   else
@@ -48,7 +118,7 @@ task = Task.find(params[:id])
 end
 
 # Update an individual task
-put "/task/:id" do
+put "/tasks/:id" do
 task = Task.find(params[:id])
   if task
     begin
@@ -63,7 +133,7 @@ task = Task.find(params[:id])
 end
 
 # Delete an invidual task
-delete '/task/:id' do
+delete '/tasks/:id' do
   task = Task.find(params[:id]) rescue nil
   task.destroy unless task.nil?
 end
