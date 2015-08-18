@@ -65,24 +65,33 @@ get '/async_tasks' do
       Fiber.new{
         EM.system('ls') do
           (1..5).each do |n|
-            tasks = Task.where(:$where => "sleep(1000) || true" ).to_json
-            puts "#{n}-->>>>>>>>>>>>>============================> first_task"
+            EM.defer do
+              tasks = Task.where(:$where => "sleep(1000) || true" ).to_json
+              puts "tasks 100 ms------------->#{tasks}"
+            end
+            static_tasks = "new task alright"
+            puts "static_tasks =============> #{static_tasks}"
+            quick_tasks = Task.where(:$where => "sleep(5) || true" ).to_json
+            puts "quick_tasks =============> #{quick_tasks}"
+            puts "#{n}-->>>>>>>>>>>>>============================> first_block"
           end
         end
       }.resume
 
       Fiber.new{
         EM.system('ls') do 
-          tasks = Task.where(:$where => "sleep(5) || true" ).to_json
           puts " ------------------------==========================> second_task"
+          tasks = Task.where(:$where => "sleep(5) || true" ).to_json
         end
       }.resume
 
       Fiber.new{
         EM.system('ls') do
-          (1..10).each do |n|
-            tasks = Task.where(:$where => "sleep(1) || true" ).to_json
-            puts " #{n}---------------------------------------> Third_task"
+          EM.defer do
+            (1..10).each do |n|
+              tasks = Task.where(:$where => "sleep(1) || true" ).to_json
+              puts " #{n}---------------------------------------> Third_task"
+            end
           end
         end
       }.resume
